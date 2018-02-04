@@ -26,14 +26,19 @@ FastqWriter:
 Use this class to serialize read records or objects to fastq format.
 """
 
-class SeqReadFacade (object):
-    def __init__ (self, read_object):
-        self.read = read_object
 
+from . import seqtransform
+
+
+class SeqReadFacade (object):
+    def __init__ (self, read_object, is_dna=True):
+        self.read = read_object
+        self.is_dna = is_dna
+            
     def _parse_identifier (self):
         parts = self.full_title.split(None, 1)
         if len(parts) == 1:
-            return parts[0], ''
+            return parts[0], type(parts[0])()
         else:
             return parts[0], parts[1]
 
@@ -97,14 +102,16 @@ class SeqReadFacade (object):
         return len(self.sequence)
 
     def __str__ (self):
-        return '\n'.join(self.full_title, self.sequence, self.quality)
+        return '\n'.join(
+            str(self.full_title), str(self.sequence), str(self.quality)
+            )
 
 
 class SimpleSeqRead (SeqReadFacade):
-    def __init__ (self, read_object=None):
+    def __init__ (self, read_object=None, is_dna=True):
         if read_object is None:
             read_object = (None, None, None)
-        super().__init__(read_object)
+        super().__init__(read_object, is_dna)
     
     @property
     def sequence (self):
@@ -134,9 +141,20 @@ class SimpleSeqRead (SeqReadFacade):
         self.read = (self.read[0], self.read[1][::-1], self.read[2][::-1])
 
     def complement (self):
-        raise NotImplementedError
+        self.read = (
+            self.read[0],
+            seqtransform.complement(self.read[1], is_dna=self.is_dna),
+            self.read[2]
+            )
 
-    
+    def reverse_complement (self):
+        self.read = (
+            self.read[0],
+            seqtransform.reverse_complement(self.read[1], is_dna=self.is_dna),
+            self.read[2][::-1]
+            )
+
+
 class FastqReader (object):
     """Parse a line-based stream in fastq format into records or read objects.
 
