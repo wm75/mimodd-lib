@@ -1,7 +1,6 @@
 # TO DO:
-# it is inconvenient to have to call iter on FastqReader and ReadSplitter
-# objects first (it's also kind of surprising given that they wrap iterators
-# themselves)
+# it is inconvenient to have to call iter on ReadSplitter objects first
+# (it's also kind of surprising given that they wrap iterators themselves)
 #
 # update all names and documentation to reflect changes
 
@@ -191,9 +190,9 @@ class FastqReader (object):
         """
         self.src = iter(src)
         if read_object is None:
-            self.robject = SimpleSeqRead()
+            self._seqread = SimpleSeqRead()
         else:
-            self.robject = read_object
+            self._seqread = read_object
         self._it = self._read_fastq_records()
         try:
             # prime the fastq record generator
@@ -207,12 +206,14 @@ class FastqReader (object):
             # We suppress the exception here because we only want to raise it
             # during iteration.
             pass
-            
+
+    def __next__ (self):
+        self._seqread.read = next(self._it)
+        return self._seqread
+
     def __iter__ (self):
         """Provide record or read object based iteration."""
-        for record in self._it:
-            self.robject.read = record
-            yield self.robject
+        return self
 
     def _read_fastq_records (self):
         """Parse a fastq format fast and robustly.
@@ -345,7 +346,7 @@ class ReadSplitter (object):
                 'cannot use default_rg when read groups are stated explicitly '
                 'in header'
                 )
-        self.src = src
+        self.src = iter(src)
         self.header = header
         self.default_rg = default_rg
 
